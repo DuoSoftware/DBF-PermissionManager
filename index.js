@@ -16,37 +16,47 @@ module.exports = (permission) =>{
     return function(req, res, next) {
 
 
-        //TODO : Get User groups and roles and check if permission is available
         let email = req.user.iss;
         let company = parseInt(req.user.company);
         let tenant = parseInt(req.user.tenant);
 
-        console.log(email);
-        console.log(company);
-        console.log(tenant);
 
         GetUserByEmail(req, (user)=>{
-            console.log(user);
 
             let User = JSON.parse(user);
 
             if(User.IsSuccess === true || User.IsSuccess === 'true'){
-                let userRoles = User.roles;
+                let userRoles = User.Result.roles;
 
                 GetRoles(req, (roles) =>{
-                    console.log(roles);
                     let Roles = JSON.parse(roles);
                     let RolesArray = Roles.Result;
 
-                    let userPermissions = [];
                     if(Roles.IsSuccess === true || Roles.IsSuccess === 'true'){
 
 
+                        let auth = false;
                         for(let role of RolesArray){
                             for(let userRole of userRoles){
 
                                 if(userRole.roleId === role._id){
-                                    userPermissions.push(role)
+                                    for (let permissionObject of role.permissions){
+
+                                        console.log("*********************************************************")
+                                        console.log(permissionObject.permissionName);
+                                        console.log(permission.permissionName);
+                                        console.log(permissionObject.permissionObj.hasOwnProperty(permission.permission))
+                                        console.log("*********************************************************")
+
+
+                                        if(permissionObject.permissionName === permission.permissionName && permissionObject.permissionObj.hasOwnProperty(permission.permission)){
+
+                                            if(permissionObject.permissionObj[permission.permission] === true || permissionObject.permissionObj[permission.permission] === "true"){
+                                                auth = true;
+                                            }
+                                        }
+                                    }
+
                                 }
 
 
@@ -54,8 +64,13 @@ module.exports = (permission) =>{
 
                         }
 
-                        console.log(userPermissions);
-                        next();
+                        if(auth){
+                            next();
+                        }else {
+                            next(new Error('Unauthorized'));
+
+                        }
+
                     }
                     else {
                         next(new Error('Roles Not Found'));
