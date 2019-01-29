@@ -17,7 +17,7 @@ module.exports = (permission) =>{
         let company = parseInt(req.user.company);
         let tenant = parseInt(req.user.tenant);
 
-        let key = `${email}.${company}.${tenant}.${permission.permissionName}`;
+        let key = `${email}:${company}:${tenant}:${permission.permissionName}`;
 
         redis.GetSession(key).then(function (value) {
 
@@ -104,7 +104,7 @@ module.exports = (permission) =>{
 
             }
         }).catch(function (ex) {
-            console.log(ex)
+            console.log(ex);
             next(new Error('Error'));
 
         });
