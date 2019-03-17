@@ -9,7 +9,10 @@
   "author": "kalana@duosoftware.com",
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^3.5.3",
     "config": "^3.0.1",
-    "dbf-dbmodels": "^1.0.133"
+    "dbf-dbmodels": "^1.0.133",
+    "ioredis": "^4.6.2",
+    "mongoose": "^5.4.19"
   }
 }

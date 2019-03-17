@@ -1,6 +1,6 @@
 
 const Redis  = require('./lib/redisManager');
-const mongoose = require("mongoose");
+const bluebird = require("mongoose");
 const GetUserByEmail = require('./lib/UserManager').GetUserByEmailInternal;
 const GetRoles = require('./lib/RoleManager').GetRolesInternal;
 
@@ -48,7 +48,6 @@ module.exports = (permission) =>{
                                 let auth = false;
                                 for(let role of RolesArray){
                                     for(let userRole of userRoles){
-
                                         if(userRole.roleId === role._id){
                                             for (let permissionObject of role.permissions){
 
