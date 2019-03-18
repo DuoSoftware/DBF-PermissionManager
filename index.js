@@ -18,16 +18,28 @@ module.exports = (permission) =>{
         let tenant = parseInt(req.user.tenant);
 
         let key = `${email}:${company}:${tenant}:${permission.permissionName}`;
+        let allKey = `${email}:${company}:${tenant}:all`;
 
         redis.GetSession(key).then(function (value) {
 
 
             if(value !== null && value !== 'null'){
+
                 if(value.permissionObj[permission.permission] === true || value.permissionObj[permission.permission] === "true"){
                     next()
                 }
                 else{
-                    next(new Error('Unauthorized'));
+
+                    redis.GetSession(allKey).then(function (value) {
+                        if(value === 'true' ||value === true){
+                            next();
+                        }
+                        else{
+                            next(new Error('Unauthorized'));
+                        }
+                    });
+
+
                 }
             }
             else {
@@ -42,7 +54,24 @@ module.exports = (permission) =>{
                             let Roles = JSON.parse(roles);
                             let RolesArray = Roles.Result;
 
-                            if(Roles.IsSuccess === true || Roles.IsSuccess === 'true'){
+                            let allExist =  RolesArray.filter((role)=>{
+                                return (role === 'all');
+                            });
+
+                            if(allExist.length !== 0 ){
+
+                                redis.SetSession(allKey, true).then(function (value) {
+                                    //console.log(value)
+
+                                }).catch(function (ex) {
+                                    console.log(ex);
+                                    next(new Error('Error'));
+                                });
+                                //Do not delay for redis ack if call fails not a big issue, will be set in the next call
+                                next();
+                            }
+
+                            else if(Roles.IsSuccess === true || Roles.IsSuccess === 'true'){
 
 
                                 let auth = false;
