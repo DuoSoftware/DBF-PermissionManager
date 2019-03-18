@@ -17,8 +17,8 @@ module.exports = (permission) =>{
         let company = parseInt(req.user.company);
         let tenant = parseInt(req.user.tenant);
 
-        let key = `${email}:${company}:${tenant}:${permission.permissionName}`;
-        let allKey = `${email}:${company}:${tenant}:all`;
+        let key = `srn:${email}:${company}:${tenant}:${permission.permissionName}`;
+        let allKey = `srn:${email}:${company}:${tenant}:all`;
 
         redis.GetSession(key).then(function (value) {
 
@@ -28,107 +28,108 @@ module.exports = (permission) =>{
                 if(value.permissionObj[permission.permission] === true || value.permissionObj[permission.permission] === "true"){
                     next()
                 }
-                else{
-
-                    redis.GetSession(allKey).then(function (value) {
-                        if(value === 'true' ||value === true){
-                            next();
-                        }
-                        else{
-                            next(new Error('Unauthorized'));
-                        }
-                    });
-
-
+                else {
+                    next(new Error('Unauthorized'));
                 }
             }
             else {
-                GetUserByUserName(req, (user)=>{
+                redis.GetSession(allKey).then(function (value) {
 
-                    let User = JSON.parse(user);
+                    if(value === 'true' ||value === true){
+                        next();
+                    }
+                    else{
 
-                    if(User.Result !== null && (User.IsSuccess === true || User.IsSuccess === 'true')){
-                        let userRoles = User.Result.roles;
+                        GetUserByUserName(req, (user)=>{
 
-                        GetRoles(req, (roles) =>{
-                            let Roles = JSON.parse(roles);
-                            let RolesArray = Roles.Result;
+                            let User = JSON.parse(user);
 
-                            let allExist =  RolesArray.filter((role)=>{
-                                return (role === 'all');
-                            });
+                            if(User.Result !== null && (User.IsSuccess === true || User.IsSuccess === 'true')){
+                                let userRoles = User.Result.roles;
 
-                            if(allExist.length !== 0 ){
+                                GetRoles(req, (roles) =>{
+                                    let Roles = JSON.parse(roles);
+                                    let RolesArray = Roles.Result;
 
-                                redis.SetSession(allKey, true).then(function (value) {
-                                    //console.log(value)
+                                    let allExist =  userRoles.filter((role)=>{
+                                        return (role.roleId === 'all');
+                                    });
 
-                                }).catch(function (ex) {
-                                    console.log(ex);
-                                    next(new Error('Error'));
-                                });
-                                //Do not delay for redis ack if call fails not a big issue, will be set in the next call
-                                next();
-                            }
+                                    if(allExist.length !== 0 ){
 
-                            else if(Roles.IsSuccess === true || Roles.IsSuccess === 'true'){
+                                        redis.SetSession(allKey, true).then(function (value) {
+                                            //console.log(value)
 
+                                        }).catch(function (ex) {
+                                            console.log(ex);
+                                            next(new Error('Error'));
+                                        });
+                                        //Do not delay for redis ack if call fails not a big issue, will be set in the next call
+                                        next();
+                                    }
 
-                                let auth = false;
-                                for(let role of RolesArray){
-                                    for(let userRole of userRoles){
-                                        if(userRole.roleId === role._id){
-                                            for (let permissionObject of role.permissions){
-
-                                                //console.log("*********************************************************")
-                                                //console.log(permissionObject.permissionName);
-                                                //console.log(permission.permissionName);
-                                                //console.log(permissionObject.permissionObj.hasOwnProperty(permission.permission))
-                                                //console.log("*********************************************************")
+                                    else if(Roles.IsSuccess === true || Roles.IsSuccess === 'true'){
 
 
-                                                if(permissionObject.permissionName === permission.permissionName && permissionObject.permissionObj.hasOwnProperty(permission.permission)){
+                                        let auth = false;
+                                        for(let role of RolesArray){
+                                            for(let userRole of userRoles){
+                                                if(userRole.roleId === role._id){
+                                                    for (let permissionObject of role.permissions){
 
-                                                    redis.SetSession(key, permissionObject).then(function (value) {
-                                                        //console.log(value)
+                                                        //console.log("*********************************************************")
+                                                        //console.log(permissionObject.permissionName);
+                                                        //console.log(permission.permissionName);
+                                                        //console.log(permissionObject.permissionObj.hasOwnProperty(permission.permission))
+                                                        //console.log("*********************************************************")
 
-                                                    }).catch(function (ex) {
-                                                        console.log(ex);
-                                                        next(new Error('Error'));
-                                                    });
 
-                                                    if(permissionObject.permissionObj[permission.permission] === true || permissionObject.permissionObj[permission.permission] === "true"){
-                                                        auth = true;
+                                                        if(permissionObject.permissionName === permission.permissionName && permissionObject.permissionObj.hasOwnProperty(permission.permission)){
+
+                                                            redis.SetSession(key, permissionObject).then(function (value) {
+                                                                //console.log(value)
+
+                                                            }).catch(function (ex) {
+                                                                console.log(ex);
+                                                                next(new Error('Error'));
+                                                            });
+
+                                                            if(permissionObject.permissionObj[permission.permission] === true || permissionObject.permissionObj[permission.permission] === "true"){
+                                                                auth = true;
+                                                            }
+                                                        }
                                                     }
+
                                                 }
+
+
                                             }
 
                                         }
 
+                                        if(auth){
+                                            next();
+                                        }else {
+                                            next(new Error('Unauthorized'));
+
+                                        }
 
                                     }
+                                    else {
+                                        next(new Error('Roles Not Found'));
+                                    }
 
-                                }
-
-                                if(auth){
-                                    next();
-                                }else {
-                                    next(new Error('Unauthorized'));
-
-                                }
+                                })
 
                             }
-                            else {
-                                next(new Error('Roles Not Found'));
+                            else{
+                                next(new Error('User Not Found'));
                             }
-
                         })
+                    }
+                });
 
-                    }
-                    else{
-                        next(new Error('User Not Found'));
-                    }
-                })
+
 
             }
         }).catch(function (ex) {
