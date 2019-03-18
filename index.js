@@ -1,7 +1,7 @@
 
 const Redis  = require('./lib/redisManager');
 const bluebird = require("mongoose");
-const GetUserByEmail = require('./lib/UserManager').GetUserByEmailInternal;
+const GetUserByUserName = require('./lib/UserManager').GetUserByUsernameInternal;
 const GetRoles = require('./lib/RoleManager').GetRolesInternal;
 
 let redis = new Redis();
@@ -13,7 +13,7 @@ module.exports = (permission) =>{
     return function(req, res, next) {
 
 
-        let email = req.user.iss;
+        let email = req.user.sub;
         let company = parseInt(req.user.company);
         let tenant = parseInt(req.user.tenant);
 
@@ -31,11 +31,11 @@ module.exports = (permission) =>{
                 }
             }
             else {
-                GetUserByEmail(req, (user)=>{
+                GetUserByUserName(req, (user)=>{
 
                     let User = JSON.parse(user);
 
-                    if(User.IsSuccess === true || User.IsSuccess === 'true'){
+                    if(User.Result !== null && (User.IsSuccess === true || User.IsSuccess === 'true')){
                         let userRoles = User.Result.roles;
 
                         GetRoles(req, (roles) =>{
